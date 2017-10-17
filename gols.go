@@ -187,15 +187,6 @@ func applicationAction(sexp interface{}, t table) (interface{}, error) {
 }
 
 func meaning(sexp interface{}, t table) (interface{}, error) {
-	m, err := expressionToAction(sexp, t)
-	return m, err
-}
-
-func value(sexp interface{}) (interface{}, error) {
-	return meaning(sexp, table([]entry{}))
-}
-
-func expressionToAction(sexp interface{}, t table) (interface{}, error) {
 	if list, ok := sexp.([]interface{}); ok {
 		if len(list) > 0 {
 			if first, ok := list[0].(string); ok {
@@ -227,6 +218,10 @@ func expressionToAction(sexp interface{}, t table) (interface{}, error) {
 			return identifierAction(sexp, t)
 		}
 	}
+}
+
+func value(sexp interface{}) (interface{}, error) {
+	return meaning(sexp, table([]entry{}))
 }
 
 // applyPrimitive applies a primitive function.
