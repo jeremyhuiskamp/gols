@@ -34,8 +34,6 @@ func (t table) lookup(name interface{}) (interface{}, bool) {
 	return nil, false
 }
 
-type action func(interface{}, table) (interface{}, error)
-
 func constAction(sexp interface{}, t table) (interface{}, error) {
 	if num, ok := sexp.(uint64); ok {
 		return num, nil
@@ -189,34 +187,34 @@ func applicationAction(sexp interface{}, t table) (interface{}, error) {
 }
 
 func meaning(sexp interface{}, t table) (interface{}, error) {
-	action := expressionToAction(sexp)
-	return action(sexp, t)
+	m, err := expressionToAction(sexp, t)
+	return m, err
 }
 
 func value(sexp interface{}) (interface{}, error) {
 	return meaning(sexp, table([]entry{}))
 }
 
-func expressionToAction(sexp interface{}) action {
+func expressionToAction(sexp interface{}, t table) (interface{}, error) {
 	if list, ok := sexp.([]interface{}); ok {
 		if len(list) > 0 {
 			if first, ok := list[0].(string); ok {
 				switch first {
 				case "quote":
-					return quoteAction
+					return quoteAction(sexp, t)
 				case "lambda":
-					return lambdaAction
+					return lambdaAction(sexp, t)
 				case "cond":
-					return condAction
+					return condAction(sexp, t)
 				}
 			}
 		}
 		// applicationAction is going to have to do quite a
 		// lot of error handling!
-		return applicationAction
+		return applicationAction(sexp, t)
 	} else {
 		if _, ok := sexp.(uint64); ok {
-			return constAction
+			return constAction(sexp, t)
 		}
 		switch sexp {
 		case "#t", "#f",
@@ -224,9 +222,9 @@ func expressionToAction(sexp interface{}) action {
 			"null?", "eq?", "atom?",
 			"zero?", "add1", "sub1",
 			"number?":
-			return constAction
+			return constAction(sexp, t)
 		default:
-			return identifierAction
+			return identifierAction(sexp, t)
 		}
 	}
 }
