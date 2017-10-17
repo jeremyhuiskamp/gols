@@ -34,10 +34,8 @@ func (t table) lookup(name interface{}) (interface{}, bool) {
 	return nil, false
 }
 
-func quoteAction(sexp interface{}, t table) (interface{}, error) {
-	if list, ok := sexp.([]interface{}); !ok {
-		return nil, errors.New("quote requires a list")
-	} else if len(list) != 2 {
+func quoteAction(list []interface{}, t table) (interface{}, error) {
+	if len(list) != 2 {
 		return nil, errors.New("quote must be a list with two elements")
 	} else {
 		return list[1], nil
@@ -55,11 +53,8 @@ func identifierAction(sexp interface{}, t table) (interface{}, error) {
 	}
 }
 
-func lambdaAction(sexp interface{}, t table) (interface{}, error) {
-	lambda, ok := sexp.([]interface{})
-	if !ok {
-		return nil, errors.New("lambda requires a list")
-	} else if len(lambda) != 3 {
+func lambdaAction(lambda []interface{}, t table) (interface{}, error) {
+	if len(lambda) != 3 {
 		return nil, errors.New("lambda requires a list with three elements")
 	}
 	// further verification left to the application:
@@ -73,11 +68,7 @@ func lambdaAction(sexp interface{}, t table) (interface{}, error) {
 	}, nil
 }
 
-func condAction(sexp interface{}, t table) (interface{}, error) {
-	cond, ok := sexp.([]interface{})
-	if !ok {
-		return nil, errors.New("cond requires a list")
-	}
+func condAction(cond []interface{}, t table) (interface{}, error) {
 	lines := cond[1:] // skip "cond" keyword
 	for _, line := range lines {
 		if cline, ok := line.([]interface{}); !ok {
@@ -104,11 +95,7 @@ func condAction(sexp interface{}, t table) (interface{}, error) {
 	return nil, errors.New("cond must have an else line")
 }
 
-func applicationAction(sexp interface{}, t table) (interface{}, error) {
-	list, ok := sexp.([]interface{})
-	if !ok {
-		return nil, errors.New("application requires a list")
-	}
+func applicationAction(list []interface{}, t table) (interface{}, error) {
 	if len(list) == 0 {
 		return nil, errors.New("application requires a non-empty list")
 	}
@@ -182,17 +169,17 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 			if first, ok := list[0].(string); ok {
 				switch first {
 				case "quote":
-					return quoteAction(sexp, t)
+					return quoteAction(list, t)
 				case "lambda":
-					return lambdaAction(sexp, t)
+					return lambdaAction(list, t)
 				case "cond":
-					return condAction(sexp, t)
+					return condAction(list, t)
 				}
 			}
 		}
 		// applicationAction is going to have to do quite a
 		// lot of error handling!
-		return applicationAction(sexp, t)
+		return applicationAction(list, t)
 	} else {
 		if num, ok := sexp.(uint64); ok {
 			return num, nil
