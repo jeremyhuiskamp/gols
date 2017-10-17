@@ -1,0 +1,7 @@
+language: go
+
+script:
+  - ci/build_codecov.sh
+
+after_success:
+  - ci/codecov.sh
