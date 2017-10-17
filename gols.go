@@ -97,6 +97,15 @@ func applicationAction(list []interface{}, t table) (interface{}, error) {
 		return nil, err
 	}
 
+	type function interface {
+		meaning([]interface{}) (interface{}, error)
+	}
+
+	f, ok := fMeaning.(function)
+	if !ok {
+		return nil, fmt.Errorf("unsupported application type: %T", fMeaning)
+	}
+
 	args := list[1:]
 	argVals := []interface{}{}
 	for _, arg := range args {
@@ -107,22 +116,7 @@ func applicationAction(list []interface{}, t table) (interface{}, error) {
 		argVals = append(argVals, argVal)
 	}
 
-	// either (primitive foo) or lambda
-	if f, ok := fMeaning.([]interface{}); ok {
-		if f[0] != "primitive" {
-			return nil, fmt.Errorf("unsupported application type: %q", f[0])
-		}
-		if name, ok := f[1].(string); !ok {
-			return nil, errors.New("name of primitive function must be a string")
-		} else {
-			return applyPrimitive(name, argVals)
-		}
-	} else if lambda, ok := fMeaning.(*lambda); ok {
-		return lambda.meaning(argVals)
-	} else {
-		// interpreter bug
-		return nil, fmt.Errorf("unsupported application type: %T", fMeaning)
-	}
+	return f.meaning(argVals)
 }
 
 func meaning(sexp interface{}, t table) (interface{}, error) {
@@ -153,7 +147,7 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 			"null?", "eq?", "atom?",
 			"zero?", "add1", "sub1",
 			"number?":
-			return []interface{}{"primitive", sexp}, nil
+			return primitive(sexp.(string)), nil
 		default:
 			return identifierAction(sexp, t)
 		}
@@ -162,6 +156,12 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 
 func value(sexp interface{}) (interface{}, error) {
 	return meaning(sexp, table([]entry{}))
+}
+
+type primitive string
+
+func (p primitive) meaning(args []interface{}) (interface{}, error) {
+	return applyPrimitive(string(p), args)
 }
 
 // applyPrimitive applies a primitive function.
