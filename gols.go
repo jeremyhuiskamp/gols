@@ -57,15 +57,7 @@ func lambdaAction(lambda []interface{}, t table) (interface{}, error) {
 	if len(lambda) != 3 {
 		return nil, errors.New("lambda requires a list with three elements")
 	}
-	// further verification left to the application:
-	return []interface{}{
-		"non-primitive",
-		[]interface{}{
-			t,         // hmm, t isn't an s-exp...
-			lambda[1], // formals
-			lambda[2], // body expression
-		},
-	}, nil
+	return newLambda(t, lambda[1], lambda[2])
 }
 
 func condAction(cond []interface{}, t table) (interface{}, error) {
@@ -104,20 +96,8 @@ func applicationAction(list []interface{}, t table) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	// either (primitive foo) or (non-primitive (table formals body))
-	f, ok := fMeaning.([]interface{})
-	// I think these are bugs in the interpreter?
-	if !ok {
-		return nil, errors.New("the meaning of a function application must be a list")
-	}
-	if len(f) != 2 {
-		return nil, errors.New(
-			"the meaning of a function application must be a " +
-				"list with two elements")
-	}
 
 	args := list[1:]
-
 	argVals := []interface{}{}
 	for _, arg := range args {
 		argVal, err := meaning(arg, t)
@@ -127,39 +107,21 @@ func applicationAction(list []interface{}, t table) (interface{}, error) {
 		argVals = append(argVals, argVal)
 	}
 
-	if f[0] == "primitive" {
+	// either (primitive foo) or lambda
+	if f, ok := fMeaning.([]interface{}); ok {
+		if f[0] != "primitive" {
+			return nil, fmt.Errorf("unsupported application type: %q", f[0])
+		}
 		if name, ok := f[1].(string); !ok {
 			return nil, errors.New("name of primitive function must be a string")
 		} else {
 			return applyPrimitive(name, argVals)
 		}
-	} else if f[0] == "non-primitive" {
-		// f[1] is (table formals body)
-		p, ok := f[1].([]interface{})
-		if !ok || len(p) != 3 {
-			// bug in lambdaAction...
-			return nil, errors.New("non-primitive should have three args")
-		}
-		// how is this different than the table passed to this function?
-		t, ok := p[0].(table)
-		if !ok {
-			return nil, errors.New("non-primitive needs a table")
-		}
-		formals, ok := p[1].([]interface{})
-		if !ok {
-			return nil, errors.New("non-primitive requires formals")
-		}
-		if len(formals) != len(argVals) {
-			return nil, errors.New("mismatching number of arguments and parameters")
-		}
-		e := entry(map[interface{}]interface{}{})
-		for i, _ := range formals {
-			e[formals[i]] = argVals[i]
-		}
-		t = append(table([]entry{e}), t...)
-		return meaning(p[2], t)
+	} else if lambda, ok := fMeaning.(*lambda); ok {
+		return lambda.meaning(argVals)
 	} else {
-		return nil, fmt.Errorf("unsupported application type: %q", f[0])
+		// interpreter bug
+		return nil, fmt.Errorf("unsupported application type: %T", fMeaning)
 	}
 }
 

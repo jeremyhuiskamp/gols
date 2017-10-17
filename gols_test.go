@@ -153,6 +153,14 @@ func TestMeaningInvalid(t *testing.T) {
 
 		"(number?)",     // no arguments
 		"(number? 2 3)", // too many arguments
+
+		"(wat 2)",         // unknown function name
+		"(#f 2)",          // non-executable function
+		"(1 2)",           // non-executable function
+		"((quote foo) 3)", // non-executable function
+
+		"((lambda (1) (2)) 3)",   // non-symbol formal
+		"((lambda (x) (1)) 2 3)", // wrong number of arguments
 	} {
 		inExp, err := parse(in)
 		if err != nil {
