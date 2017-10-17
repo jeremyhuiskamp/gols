@@ -34,16 +34,6 @@ func (t table) lookup(name interface{}) (interface{}, bool) {
 	return nil, false
 }
 
-func constAction(sexp interface{}, t table) (interface{}, error) {
-	if num, ok := sexp.(uint64); ok {
-		return num, nil
-	}
-	if sexp == "#t" || sexp == "#f" {
-		return sexp, nil
-	}
-	return []interface{}{"primitive", sexp}, nil
-}
-
 func quoteAction(sexp interface{}, t table) (interface{}, error) {
 	if list, ok := sexp.([]interface{}); !ok {
 		return nil, errors.New("quote requires a list")
@@ -204,16 +194,17 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 		// lot of error handling!
 		return applicationAction(sexp, t)
 	} else {
-		if _, ok := sexp.(uint64); ok {
-			return constAction(sexp, t)
+		if num, ok := sexp.(uint64); ok {
+			return num, nil
 		}
 		switch sexp {
-		case "#t", "#f",
-			"cons", "car", "cdr",
+		case "#t", "#f":
+			return sexp, nil
+		case "cons", "car", "cdr",
 			"null?", "eq?", "atom?",
 			"zero?", "add1", "sub1",
 			"number?":
-			return constAction(sexp, t)
+			return []interface{}{"primitive", sexp}, nil
 		default:
 			return identifierAction(sexp, t)
 		}
