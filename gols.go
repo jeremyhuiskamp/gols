@@ -3,7 +3,6 @@ package gols
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 )
@@ -143,128 +142,18 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 		switch sexp {
 		case "#t", "#f":
 			return sexp, nil
-		case "cons", "car", "cdr",
-			"null?", "eq?", "atom?",
-			"zero?", "add1", "sub1",
-			"number?":
-			return primitive(sexp.(string)), nil
-		default:
-			return identifierAction(sexp, t)
 		}
+		if str, ok := sexp.(string); ok {
+			if primitive, ok := nameToPrimitive[str]; ok {
+				return primitive, nil
+			}
+		}
+		return identifierAction(sexp, t)
 	}
 }
 
 func value(sexp interface{}) (interface{}, error) {
 	return meaning(sexp, table([]entry{}))
-}
-
-type primitive string
-
-func (p primitive) meaning(args []interface{}) (interface{}, error) {
-	return applyPrimitive(string(p), args)
-}
-
-// applyPrimitive applies a primitive function.
-func applyPrimitive(name string, vals []interface{}) (interface{}, error) {
-	bToSexp := func(b bool) interface{} {
-		if b {
-			return "#t"
-		}
-		return "#f"
-	}
-
-	switch name {
-	case "cons":
-		if len(vals) != 2 {
-			return nil, errors.New("cons takes two arguments")
-		} else if to, ok := vals[1].([]interface{}); !ok {
-			return nil, errors.New("second argument to cons must be a list")
-		} else {
-			return append([]interface{}{vals[0]}, to...), nil
-		}
-	case "car":
-		if len(vals) != 1 {
-			return nil, errors.New("car takes one argument")
-		} else if from, ok := vals[0].([]interface{}); !ok {
-			return nil, errors.New("car takes one list")
-		} else if len(from) < 1 {
-			return nil, errors.New("cannot take car of empty list")
-		} else {
-			return from[0], nil
-		}
-	case "cdr":
-		if len(vals) != 1 {
-			return nil, errors.New("cdr takes one argument")
-		} else if from, ok := vals[0].([]interface{}); !ok {
-			return nil, errors.New("cdr takes one list")
-		} else if len(from) < 1 {
-			return nil, errors.New("cannot take cdr of empty list")
-		} else {
-			return from[1:], nil
-		}
-	case "null?":
-		if len(vals) != 1 {
-			return nil, errors.New("null? takes one argument")
-		} else if from, ok := vals[0].([]interface{}); !ok {
-			return nil, errors.New("null? takes one list")
-		} else {
-			return bToSexp(len(from) == 0), nil
-		}
-	case "eq?":
-		if len(vals) != 2 {
-			return nil, errors.New("eq? takes two arguments")
-		} else if first, ok := vals[0].(string); !ok {
-			return nil, errors.New("eq? takes two atoms")
-		} else if second, ok := vals[1].(string); !ok {
-			return nil, errors.New("eq? takes two atoms")
-		} else {
-			return bToSexp(first == second), nil
-		}
-	case "atom?":
-		if len(vals) != 1 {
-			return nil, errors.New("atom? takes one argument")
-		}
-		// Hmm, support for (primitive x) and (non-privitive x)?
-		// The book suggests these are atoms.  How do we hit that case?
-		_, ok := vals[0].([]interface{})
-		return bToSexp(!ok), nil
-	case "zero?":
-		if len(vals) != 1 {
-			return nil, errors.New("zero? takes one argument")
-		} else if num, ok := vals[0].(uint64); !ok {
-			return nil, errors.New("zero? takes one number")
-		} else {
-			return bToSexp(num == 0), nil
-		}
-	case "add1":
-		if len(vals) != 1 {
-			return nil, errors.New("add1 takes one argument")
-		} else if num, ok := vals[0].(uint64); !ok {
-			return nil, errors.New("add1 takes one number")
-		} else if num == math.MaxUint64 {
-			return nil, errors.New("add1 would cause overflow")
-		} else {
-			return num + 1, nil
-		}
-	case "sub1":
-		if len(vals) != 1 {
-			return nil, errors.New("sub1 takes one argument")
-		} else if num, ok := vals[0].(uint64); !ok {
-			return nil, errors.New("sub1 takes one number")
-		} else if num == 0 {
-			return nil, errors.New("sub1 would cause underflow")
-		} else {
-			return num - 1, nil
-		}
-	case "number?":
-		if len(vals) != 1 {
-			return nil, errors.New("number? takes one argument")
-		}
-		_, ok := vals[0].(uint64)
-		return bToSexp(ok), nil
-	default:
-		return nil, fmt.Errorf("unknown primitive: %q", name)
-	}
 }
 
 // parsing implementation below copied from http://norvig.com/lispy.html

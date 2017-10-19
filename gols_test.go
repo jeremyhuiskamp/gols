@@ -61,6 +61,10 @@ func TestMeaningValid(t *testing.T) {
 		         ((null? l) 0)
 		         (else (add1 (length (cdr l))))))))
 		  (quote (a b c d)))`: "4",
+
+		// can't shadow a primitive (at least according to the book's
+		// implementation):
+		"((lambda (car) (car (quote (a b c)))) cdr)": "a",
 	} {
 		t.Log(in)
 		inExp, err := parse(in)
