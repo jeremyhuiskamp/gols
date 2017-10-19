@@ -3,7 +3,6 @@ package gols
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 )
@@ -57,15 +56,7 @@ func lambdaAction(lambda []interface{}, t table) (interface{}, error) {
 	if len(lambda) != 3 {
 		return nil, errors.New("lambda requires a list with three elements")
 	}
-	// further verification left to the application:
-	return []interface{}{
-		"non-primitive",
-		[]interface{}{
-			t,         // hmm, t isn't an s-exp...
-			lambda[1], // formals
-			lambda[2], // body expression
-		},
-	}, nil
+	return newLambda(t, lambda[1], lambda[2])
 }
 
 func condAction(cond []interface{}, t table) (interface{}, error) {
@@ -104,20 +95,17 @@ func applicationAction(list []interface{}, t table) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	// either (primitive foo) or (non-primitive (table formals body))
-	f, ok := fMeaning.([]interface{})
-	// I think these are bugs in the interpreter?
-	if !ok {
-		return nil, errors.New("the meaning of a function application must be a list")
+
+	type function interface {
+		meaning([]interface{}) (interface{}, error)
 	}
-	if len(f) != 2 {
-		return nil, errors.New(
-			"the meaning of a function application must be a " +
-				"list with two elements")
+
+	f, ok := fMeaning.(function)
+	if !ok {
+		return nil, fmt.Errorf("unsupported application type: %T", fMeaning)
 	}
 
 	args := list[1:]
-
 	argVals := []interface{}{}
 	for _, arg := range args {
 		argVal, err := meaning(arg, t)
@@ -127,40 +115,7 @@ func applicationAction(list []interface{}, t table) (interface{}, error) {
 		argVals = append(argVals, argVal)
 	}
 
-	if f[0] == "primitive" {
-		if name, ok := f[1].(string); !ok {
-			return nil, errors.New("name of primitive function must be a string")
-		} else {
-			return applyPrimitive(name, argVals)
-		}
-	} else if f[0] == "non-primitive" {
-		// f[1] is (table formals body)
-		p, ok := f[1].([]interface{})
-		if !ok || len(p) != 3 {
-			// bug in lambdaAction...
-			return nil, errors.New("non-primitive should have three args")
-		}
-		// how is this different than the table passed to this function?
-		t, ok := p[0].(table)
-		if !ok {
-			return nil, errors.New("non-primitive needs a table")
-		}
-		formals, ok := p[1].([]interface{})
-		if !ok {
-			return nil, errors.New("non-primitive requires formals")
-		}
-		if len(formals) != len(argVals) {
-			return nil, errors.New("mismatching number of arguments and parameters")
-		}
-		e := entry(map[interface{}]interface{}{})
-		for i, _ := range formals {
-			e[formals[i]] = argVals[i]
-		}
-		t = append(table([]entry{e}), t...)
-		return meaning(p[2], t)
-	} else {
-		return nil, fmt.Errorf("unsupported application type: %q", f[0])
-	}
+	return f.meaning(argVals)
 }
 
 func meaning(sexp interface{}, t table) (interface{}, error) {
@@ -187,122 +142,18 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 		switch sexp {
 		case "#t", "#f":
 			return sexp, nil
-		case "cons", "car", "cdr",
-			"null?", "eq?", "atom?",
-			"zero?", "add1", "sub1",
-			"number?":
-			return []interface{}{"primitive", sexp}, nil
-		default:
-			return identifierAction(sexp, t)
 		}
+		if str, ok := sexp.(string); ok {
+			if primitive, ok := nameToPrimitive[str]; ok {
+				return primitive, nil
+			}
+		}
+		return identifierAction(sexp, t)
 	}
 }
 
 func value(sexp interface{}) (interface{}, error) {
 	return meaning(sexp, table([]entry{}))
-}
-
-// applyPrimitive applies a primitive function.
-func applyPrimitive(name string, vals []interface{}) (interface{}, error) {
-	bToSexp := func(b bool) interface{} {
-		if b {
-			return "#t"
-		}
-		return "#f"
-	}
-
-	switch name {
-	case "cons":
-		if len(vals) != 2 {
-			return nil, errors.New("cons takes two arguments")
-		} else if to, ok := vals[1].([]interface{}); !ok {
-			return nil, errors.New("second argument to cons must be a list")
-		} else {
-			return append([]interface{}{vals[0]}, to...), nil
-		}
-	case "car":
-		if len(vals) != 1 {
-			return nil, errors.New("car takes one argument")
-		} else if from, ok := vals[0].([]interface{}); !ok {
-			return nil, errors.New("car takes one list")
-		} else if len(from) < 1 {
-			return nil, errors.New("cannot take car of empty list")
-		} else {
-			return from[0], nil
-		}
-	case "cdr":
-		if len(vals) != 1 {
-			return nil, errors.New("cdr takes one argument")
-		} else if from, ok := vals[0].([]interface{}); !ok {
-			return nil, errors.New("cdr takes one list")
-		} else if len(from) < 1 {
-			return nil, errors.New("cannot take cdr of empty list")
-		} else {
-			return from[1:], nil
-		}
-	case "null?":
-		if len(vals) != 1 {
-			return nil, errors.New("null? takes one argument")
-		} else if from, ok := vals[0].([]interface{}); !ok {
-			return nil, errors.New("null? takes one list")
-		} else {
-			return bToSexp(len(from) == 0), nil
-		}
-	case "eq?":
-		if len(vals) != 2 {
-			return nil, errors.New("eq? takes two arguments")
-		} else if first, ok := vals[0].(string); !ok {
-			return nil, errors.New("eq? takes two atoms")
-		} else if second, ok := vals[1].(string); !ok {
-			return nil, errors.New("eq? takes two atoms")
-		} else {
-			return bToSexp(first == second), nil
-		}
-	case "atom?":
-		if len(vals) != 1 {
-			return nil, errors.New("atom? takes one argument")
-		}
-		// Hmm, support for (primitive x) and (non-privitive x)?
-		// The book suggests these are atoms.  How do we hit that case?
-		_, ok := vals[0].([]interface{})
-		return bToSexp(!ok), nil
-	case "zero?":
-		if len(vals) != 1 {
-			return nil, errors.New("zero? takes one argument")
-		} else if num, ok := vals[0].(uint64); !ok {
-			return nil, errors.New("zero? takes one number")
-		} else {
-			return bToSexp(num == 0), nil
-		}
-	case "add1":
-		if len(vals) != 1 {
-			return nil, errors.New("add1 takes one argument")
-		} else if num, ok := vals[0].(uint64); !ok {
-			return nil, errors.New("add1 takes one number")
-		} else if num == math.MaxUint64 {
-			return nil, errors.New("add1 would cause overflow")
-		} else {
-			return num + 1, nil
-		}
-	case "sub1":
-		if len(vals) != 1 {
-			return nil, errors.New("sub1 takes one argument")
-		} else if num, ok := vals[0].(uint64); !ok {
-			return nil, errors.New("sub1 takes one number")
-		} else if num == 0 {
-			return nil, errors.New("sub1 would cause underflow")
-		} else {
-			return num - 1, nil
-		}
-	case "number?":
-		if len(vals) != 1 {
-			return nil, errors.New("number? takes one argument")
-		}
-		_, ok := vals[0].(uint64)
-		return bToSexp(ok), nil
-	default:
-		return nil, fmt.Errorf("unknown primitive: %q", name)
-	}
 }
 
 // parsing implementation below copied from http://norvig.com/lispy.html

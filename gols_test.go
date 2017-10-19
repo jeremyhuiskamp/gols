@@ -61,6 +61,10 @@ func TestMeaningValid(t *testing.T) {
 		         ((null? l) 0)
 		         (else (add1 (length (cdr l))))))))
 		  (quote (a b c d)))`: "4",
+
+		// can't shadow a primitive (at least according to the book's
+		// implementation):
+		"((lambda (car) (car (quote (a b c)))) cdr)": "a",
 	} {
 		t.Log(in)
 		inExp, err := parse(in)
@@ -153,6 +157,14 @@ func TestMeaningInvalid(t *testing.T) {
 
 		"(number?)",     // no arguments
 		"(number? 2 3)", // too many arguments
+
+		"(wat 2)",         // unknown function name
+		"(#f 2)",          // non-executable function
+		"(1 2)",           // non-executable function
+		"((quote foo) 3)", // non-executable function
+
+		"((lambda (1) (2)) 3)",   // non-symbol formal
+		"((lambda (x) (1)) 2 3)", // wrong number of arguments
 	} {
 		inExp, err := parse(in)
 		if err != nil {
