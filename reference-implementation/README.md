@@ -9,7 +9,7 @@ A real Scheme implementation is required to actually execute these.  At least
 
 ## Usage
 
-`guild original.ss`
+`guile original.ss`
 
 If you see no `#f` at the beginning of each line, the tests pass.
 
