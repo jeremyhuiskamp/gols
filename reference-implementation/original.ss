@@ -292,4 +292,5 @@
 		  (else (add1 (length (cdr l))))))))
 	   (quote (a b c d))))
        (a ((lambda (car) (car (quote (a b c)))) cdr))
+       (1 ((lambda (x) x) 1))
        ))))

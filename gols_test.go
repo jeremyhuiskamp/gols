@@ -65,6 +65,9 @@ func TestMeaningValid(t *testing.T) {
 		// can't shadow a primitive (at least according to the book's
 		// implementation):
 		"((lambda (car) (car (quote (a b c)))) cdr)": "a",
+
+		// lambda whose body is not a list:
+		"((lambda (x) x) 1)": "1",
 	} {
 		t.Log(in)
 		inExp, err := parse(in)
