@@ -157,7 +157,7 @@
        (cdr (first vals)))
       ((eq? name (quote null?))
        (null? (first vals)))
-      ((eq? name (quote ex?))
+      ((eq? name (quote eq?))
        (eq? (first vals) (second vals)))
       ((eq? name (quote atom?))
        (:atom? (first vals)))
@@ -293,4 +293,8 @@
 	   (quote (a b c d))))
        (a ((lambda (car) (car (quote (a b c)))) cdr))
        (1 ((lambda (x) x) 1))
+       (#t (eq? #t #t)) ; eq? against booleans
+       (#t (eq? #f #f))
+       (#f (eq? #f #t))
+       (#t (eq? (quote x) (quote x)))
        ))))
