@@ -8,7 +8,7 @@ type lambda struct {
 	// t is the symbol table at the point where the lambda is defined.
 	t       table
 	formals []string
-	body    []interface{}
+	body    interface{}
 }
 
 // newLambda creates a new lambda from a surrounding symbol table, a formals
@@ -27,12 +27,7 @@ func newLambda(t table, formals interface{}, body interface{}) (*lambda, error) 
 		formalsStr = append(formalsStr, formalStr)
 	}
 
-	bodyL, ok := body.([]interface{})
-	if !ok {
-		return nil, errors.New("lambda body must be a list")
-	}
-
-	return &lambda{t, formalsStr, bodyL}, nil
+	return &lambda{t, formalsStr, body}, nil
 }
 
 // meaning evaluates the meaning of the lambda against the given arguments
