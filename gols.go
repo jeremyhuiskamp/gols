@@ -36,9 +36,8 @@ func (t table) lookup(name interface{}) (interface{}, bool) {
 func quoteAction(list []interface{}, t table) (interface{}, error) {
 	if len(list) != 2 {
 		return nil, errors.New("quote must be a list with two elements")
-	} else {
-		return list[1], nil
 	}
+	return list[1], nil
 }
 
 func identifierAction(sexp interface{}, t table) (interface{}, error) {
@@ -135,18 +134,17 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 		// applicationAction is going to have to do quite a
 		// lot of error handling!
 		return applicationAction(list, t)
-	} else {
-		if num, ok := sexp.(uint64); ok {
-			return num, nil
-		} else if b, ok := sexp.(bool); ok {
-			return b, nil
-		} else if str, ok := sexp.(string); ok {
-			if primitive, ok := nameToPrimitive[str]; ok {
-				return primitive, nil
-			}
-		}
-		return identifierAction(sexp, t)
 	}
+	if num, ok := sexp.(uint64); ok {
+		return num, nil
+	} else if b, ok := sexp.(bool); ok {
+		return b, nil
+	} else if str, ok := sexp.(string); ok {
+		if primitive, ok := nameToPrimitive[str]; ok {
+			return primitive, nil
+		}
+	}
+	return identifierAction(sexp, t)
 }
 
 func value(sexp interface{}) (interface{}, error) {
