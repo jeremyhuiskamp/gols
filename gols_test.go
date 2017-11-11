@@ -21,6 +21,9 @@ func TestMeaningValid(t *testing.T) {
 
 		"(eq? (quote x) (quote x))": "#t",
 		"(eq? (quote x) (quote y))": "#f",
+		"(eq? #t #t)":               "#t",
+		"(eq? #f #f)":               "#t",
+		"(eq? #f #t)":               "#f",
 
 		"(number? 1)":          "#t",
 		"(number? (quote x))":  "#f",
@@ -366,6 +369,12 @@ func sexpToString(sexp interface{}) string {
 		res += ")"
 	} else if i, ok := sexp.(uint64); ok {
 		res += fmt.Sprintf("%d", i)
+	} else if b, ok := sexp.(bool); ok {
+		if b {
+			res += "#t"
+		} else {
+			res += "#f"
+		}
 	} else {
 		res += fmt.Sprintf("%s", sexp)
 	}

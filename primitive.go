@@ -28,13 +28,6 @@ var nameToPrimitive = map[string]functionFunc{
 	"number?": isNumber,
 }
 
-func bToSexp(b bool) interface{} {
-	if b {
-		return "#t"
-	}
-	return "#f"
-}
-
 func cons(vals []interface{}) (interface{}, error) {
 	if len(vals) != 2 {
 		return nil, errors.New("cons takes two arguments")
@@ -75,20 +68,24 @@ func isNull(vals []interface{}) (interface{}, error) {
 	} else if from, ok := vals[0].([]interface{}); !ok {
 		return nil, errors.New("null? takes one list")
 	} else {
-		return bToSexp(len(from) == 0), nil
+		return len(from) == 0, nil
 	}
 }
 
 func isEq(vals []interface{}) (interface{}, error) {
 	if len(vals) != 2 {
 		return nil, errors.New("eq? takes two arguments")
-	} else if first, ok := vals[0].(string); !ok {
-		return nil, errors.New("eq? takes two atoms")
-	} else if second, ok := vals[1].(string); !ok {
-		return nil, errors.New("eq? takes two atoms")
-	} else {
-		return bToSexp(first == second), nil
 	}
+
+	for _, val := range vals {
+		_, isBool := val.(bool)
+		_, isStr := val.(string)
+		if !isBool && !isStr {
+			return nil, errors.New("eq? takes two atoms")
+		}
+	}
+
+	return vals[0] == vals[1], nil
 }
 
 func isAtom(vals []interface{}) (interface{}, error) {
@@ -98,7 +95,7 @@ func isAtom(vals []interface{}) (interface{}, error) {
 	// Hmm, support for (primitive x) and (non-privitive x)?
 	// The book suggests these are atoms.  How do we hit that case?
 	_, ok := vals[0].([]interface{})
-	return bToSexp(!ok), nil
+	return !ok, nil
 }
 
 func isZero(vals []interface{}) (interface{}, error) {
@@ -107,7 +104,7 @@ func isZero(vals []interface{}) (interface{}, error) {
 	} else if num, ok := vals[0].(uint64); !ok {
 		return nil, errors.New("zero? takes one number")
 	} else {
-		return bToSexp(num == 0), nil
+		return num == 0, nil
 	}
 }
 
@@ -140,5 +137,5 @@ func isNumber(vals []interface{}) (interface{}, error) {
 		return nil, errors.New("number? takes one argument")
 	}
 	_, ok := vals[0].(uint64)
-	return bToSexp(ok), nil
+	return ok, nil
 }

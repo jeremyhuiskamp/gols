@@ -76,7 +76,7 @@ func condAction(cond []interface{}, t table) (interface{}, error) {
 			// Only place where booleans are significant in
 			// the language?
 			// Is it an error if the meaning isn't boolean?
-			if matches == "#t" {
+			if matches == true {
 				return meaning(cline[1], t)
 			}
 		}
@@ -138,12 +138,9 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 	} else {
 		if num, ok := sexp.(uint64); ok {
 			return num, nil
-		}
-		switch sexp {
-		case "#t", "#f":
-			return sexp, nil
-		}
-		if str, ok := sexp.(string); ok {
+		} else if b, ok := sexp.(bool); ok {
+			return b, nil
+		} else if str, ok := sexp.(string); ok {
 			if primitive, ok := nameToPrimitive[str]; ok {
 				return primitive, nil
 			}
@@ -167,8 +164,7 @@ func tokenize(src string) []string {
 }
 
 // readFromTokens builds an abstract syntax tree from a list of tokens.
-// Atoms are either a string or a uint64.  Lists are a []interface{}.
-// TODO: consider #f and #t as bool types?
+// Atoms are either a bool, uint64, or string.  Lists are a []interface{}.
 func readFromTokens(tokens []string) (interface{}, []string, error) {
 	if len(tokens) == 0 {
 		return nil, nil, errors.New("unexpected EOF")
@@ -195,7 +191,11 @@ func readFromTokens(tokens []string) (interface{}, []string, error) {
 	case ")":
 		return nil, nil, errors.New("unexpected )")
 	default:
-		if num, err := strconv.ParseUint(token, 10, 64); err != nil {
+		if token == "#t" {
+			return true, tokens, nil
+		} else if token == "#f" {
+			return false, tokens, nil
+		} else if num, err := strconv.ParseUint(token, 10, 64); err != nil {
 			return token, tokens, nil
 		} else {
 			return num, tokens, nil
