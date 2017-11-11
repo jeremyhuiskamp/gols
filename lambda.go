@@ -36,7 +36,7 @@ func (l *lambda) meaning(args []interface{}) (interface{}, error) {
 		return nil, errors.New("wrong number of arguments to lambda")
 	}
 	e := entry(map[interface{}]interface{}{})
-	for i, _ := range l.formals {
+	for i := range l.formals {
 		e[l.formals[i]] = args[i]
 	}
 	return meaning(l.body, append(table([]entry{e}), l.t...))
