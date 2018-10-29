@@ -40,11 +40,8 @@ func quoteAction(list []interface{}, t table) (interface{}, error) {
 	return list[1], nil
 }
 
-func identifierAction(sexp interface{}, t table) (interface{}, error) {
-	if name, ok := sexp.(string); !ok {
-		// is this a bug in the interpreter?
-		return nil, errors.New("identifiers must be atoms")
-	} else if val, ok := t.lookup(name); !ok {
+func identifierAction(name string, t table) (interface{}, error) {
+	if val, ok := t.lookup(name); !ok {
 		return nil, fmt.Errorf("unrecognized identifier: %q", name)
 	} else {
 		return val, nil
@@ -143,8 +140,9 @@ func meaning(sexp interface{}, t table) (interface{}, error) {
 		if primitive, ok := nameToPrimitive[str]; ok {
 			return primitive, nil
 		}
+		return identifierAction(str, t)
 	}
-	return identifierAction(sexp, t)
+	return nil, errors.New("unsupported s-expression type")
 }
 
 func value(sexp interface{}) (interface{}, error) {
@@ -188,12 +186,12 @@ func readFromTokens(tokens []string) (interface{}, []string, error) {
 		return l, tokens[1:], nil
 	case ")":
 		return nil, nil, errors.New("unexpected )")
+	case "#t":
+		return true, tokens, nil
+	case "#f":
+		return false, tokens, nil
 	default:
-		if token == "#t" {
-			return true, tokens, nil
-		} else if token == "#f" {
-			return false, tokens, nil
-		} else if num, err := strconv.ParseUint(token, 10, 64); err != nil {
+		if num, err := strconv.ParseUint(token, 10, 64); err != nil {
 			return token, tokens, nil
 		} else {
 			return num, tokens, nil
